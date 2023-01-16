@@ -1,4 +1,4 @@
-package com.example.cam;
+package com.rkexample.cam;
 
 /**
  * @author Jose Davis Nidhin
@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.List;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 import android.util.Log;
@@ -24,6 +25,8 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
     Size mPreviewSize;
     List<Size> mSupportedPreviewSizes;
     Camera mCamera;
+    boolean mPreviewed = false;
+    boolean mSurfaceCreated = false;
 
     Preview(Context context, SurfaceView sv) {
         super(context);
@@ -34,6 +37,9 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
         mHolder = mSurfaceView.getHolder();
         mHolder.addCallback(this);
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        //mSurfaceView.setZOrderOnTop(true);
+        mSurfaceView.setZOrderMediaOverlay(true);
+        setBackgroundColor(Color.TRANSPARENT);
     }
 
     public void setCamera(Camera camera) {
@@ -44,6 +50,7 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
 
     		// get Camera parameters
     		Camera.Parameters params = mCamera.getParameters();
+    		params.setPreviewSize(640, 480);
 
     		List<String> focusModes = params.getSupportedFocusModes();
     		if (focusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
@@ -51,6 +58,17 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
     			params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
     			// set Camera parameters
     			mCamera.setParameters(params);
+    		}
+
+    		if (!mPreviewed && mSurfaceCreated) {
+        		try {
+                    mCamera.setPreviewDisplay(mHolder);
+                    mCamera.startPreview();
+                    mPreviewed = true;
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
     		}
     	}
     }
@@ -98,22 +116,37 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
     }
 
     public void surfaceCreated(SurfaceHolder holder) {
+        Log.i(TAG,"********surfaceCreated************");
         // The Surface has been created, acquire the camera and tell it where
         // to draw.
         try {
-            if (mCamera != null) {
+            if (mCamera != null && !mPreviewed) {
+                mHolder = holder;
                 mCamera.setPreviewDisplay(holder);
+                mCamera.startPreview();
+                mPreviewed = true;
+                mSurfaceCreated = true;
             }
         } catch (IOException exception) {
             Log.e(TAG, "IOException caused by setPreviewDisplay()", exception);
         }
+    }
+    
+    public SurfaceHolder getSurfaceHolder() {
+        return mHolder;
     }
 
     public void surfaceDestroyed(SurfaceHolder holder) {
         // Surface will be destroyed when we return, so stop the preview.
         if (mCamera != null) {
             mCamera.stopPreview();
+            mPreviewed = false;
         }
+        mSurfaceCreated = false;
+    }
+    
+    public boolean isPreviewing() {
+        return mPreviewed;
     }
 
 
@@ -151,14 +184,15 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
     }
 
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
-    	if(mCamera != null) {
-    		Camera.Parameters parameters = mCamera.getParameters();
-    		parameters.setPreviewSize(mPreviewSize.width, mPreviewSize.height);
-    		requestLayout();
-
-    		mCamera.setParameters(parameters);
-    		mCamera.startPreview();
-    	}
+        Log.d(TAG, "==========surfaceChanged=================");
+//    	if(mCamera != null) {
+//    		Camera.Parameters parameters = mCamera.getParameters();
+//    		parameters.setPreviewSize(mPreviewSize.width, mPreviewSize.height);
+//    		requestLayout();
+//
+//    		mCamera.setParameters(parameters);
+//    		mCamera.startPreview();
+//    	}
     }
 
 }
